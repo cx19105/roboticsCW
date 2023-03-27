@@ -6,6 +6,9 @@ from operator import add
 
 files = ['ambientLight.csv', 'height170.csv', 'height225.csv', 'height250.csv', 'height295.csv', 'height360.csv', 'height420.csv', 'height500.csv']
 
+differenceList = []
+distances = [1000,170,225,250,295,360,420,500]
+
 for file in files:
 
     fleft = []
@@ -50,7 +53,11 @@ for file in files:
     sumCR = list(map(add, centre, right))
     sumBump = list(map(add, lbump, rbump))
 
-    plt.plot(dist, signal.filtfilt(b,a,sumCL))
+    dist = [max(dist) - dist[i] for i in range(0,len(dist))]
+
+    plt.plot(dist, signal.filtfilt(b,a,sumBump))
+    difference = max(signal.filtfilt(b,a,sumBump)) - min(signal.filtfilt(b,a,sumBump))
+    differenceList.append(difference)
 
     #plt.axvline(x=max(dist)-72)
 
@@ -58,4 +65,9 @@ plt.grid()
 plt.xlabel("mm")
 plt.ylabel("Sensor Reading")
 plt.legend(files)
+plt.show()
+
+plt.plot(distances,differenceList)
+plt.xlabel("mm")
+plt.ylabel("Difference between max and min sensor readings")
 plt.show()
