@@ -74,7 +74,3 @@ plt.ylabel("Sensor Reading")
 #plt.legend(['Left bump', 'Right bumper', 'Centre', 'Left', 'Right', 'Far left', 'Far right'])
 plt.legend(['Sum CL', 'Sum RL', 'Sum Bumper'])
 plt.show()
-
-
-
-
