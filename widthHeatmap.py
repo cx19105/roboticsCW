@@ -23,7 +23,7 @@ class Width:
 
     def getDist(self, filename):
         charList = []
-        value = re.findall(r'\d+', filename)
+
         dir = ''.join([c for c in filename if c.isupper()])
         
         if dir == 'L':
