@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import numpy as np
 from operator import add
+from os import listdir
+from os.path import isfile, join
 
-files = ['ambientLight.csv', 'height170.csv', 'height225.csv', 'height250.csv', 'height295.csv', 'height360.csv', 'height420.csv', 'height500.csv']
+files = ['lineHeights/'+file for file in listdir('lineHeights') if isfile(join('lightHeights', file))]
 
 differenceList = []
 distances = [1000,170,225,250,295,360,420,500]

@@ -15,7 +15,7 @@ rbump = []
 dist = []
 
 
-with open('owenRoomPixarLight.csv', newline='') as csvfile:
+with open('ambientLight.csv', newline='') as csvfile:
     reader = csv.reader(csvfile)
     #print(reader)
 
@@ -64,13 +64,13 @@ plt.plot(x, rc[0]*x + rc[1])
 plt.plot(x, rcfilt)
 plt.plot(x, lcfilt)'''
 
-plt.plot(dist, signal.filtfilt(b,a,sumCL))
-plt.plot(dist, signal.filtfilt(b,a,sumCR))
-plt.plot(dist, signal.filtfilt(b,a,sumBump))
+plt.plot(dist, signal.filtfilt(b,a,left))
+plt.plot(dist, signal.filtfilt(b,a,centre))
+plt.plot(dist, signal.filtfilt(b,a,right))
 plt.grid()
 plt.xlabel("mm")
 plt.ylabel("Sensor Reading")
 #plt.axvline(x=max(dist)-72)
 #plt.legend(['Left bump', 'Right bumper', 'Centre', 'Left', 'Right', 'Far left', 'Far right'])
-plt.legend(['Sum CL', 'Sum RL', 'Sum Bumper'])
+plt.legend(['Left', 'Centre', 'Right'])
 plt.show()
