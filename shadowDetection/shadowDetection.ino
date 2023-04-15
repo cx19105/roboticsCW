@@ -32,7 +32,6 @@ void setup() {
   float ambientLight[3];
 
   lineSensors.getAmbient(ambientLight);
-  Serial.print(ambientLight[0]);
 
   unsigned long leftAmbient = ambientLight[0];
   unsigned long rightAmbient = ambientLight[1];
@@ -41,6 +40,7 @@ void setup() {
   leftCentreAmbient = leftAmbient + centreAmbient;
   rightCentreAmbient = rightAmbient + centreAmbient;
   delay(2000);
+  Serial.println(leftCentreAmbient);
 }
 
 void loop() {
@@ -48,8 +48,7 @@ void loop() {
   unsigned long elapsed_t;
 
   unsigned long ls_ts;
-  unsigned long motors_ts;
-  
+  unsigned long motors_ts;  
  
   current_ts = millis();
 
@@ -75,15 +74,12 @@ void loop() {
 
     unsigned long sensor_read[NB_LS_PINS];
     lineSensors.readLineSensor(sensor_read);
-    lineSensors.getDist(sensor_read, leftCentreAmbient, rightCentreAmbient);
+    //lineSensors.getDist(sensor_read, leftCentreAmbient, rightCentreAmbient);
     
 
     ls_ts = millis();
   }
- 
- 
-  Serial.print("\n");
   
-
+  Serial.print("Hello");
 
 }

@@ -5,14 +5,24 @@ import numpy as np
 from operator import add
 from os import listdir
 from os.path import isfile, join
+import re
 
-files = ['lineHeights/'+file for file in listdir('lineHeights') if isfile(join('lightHeights', file))]
 
+files = ['ambientLight.csv', 'height170.csv', 'height225.csv', 'height250.csv', 'height295.csv', 'height360.csv', 'height420.csv', 'height500.csv']
+
+files = [file for file in listdir('lightHeights') if isfile(join('lightHeights', file))]
 differenceList = []
 distances = [1000,170,225,250,295,360,420,500]
 
-for file in files:
+heights = []
 
+for file in files:
+    value = re.findall(r'\d+', file)
+    if value == []:
+        value = 'Ambient'
+    else:
+        value = str(value[0])+'mm'
+    heights.append(value)
     fleft = []
     left = []
     centre = []
@@ -22,7 +32,7 @@ for file in files:
     rbump = []
     dist = []
 
-    with open(file, newline='') as csvfile:
+    with open('lightHeights/'+file, newline='') as csvfile:
         reader = csv.reader(csvfile)
         #print(reader)
 
@@ -66,10 +76,10 @@ for file in files:
 plt.grid()
 plt.xlabel("mm")
 plt.ylabel("Sensor Reading")
-plt.legend(files)
+plt.legend(heights)
 plt.show()
 
 plt.plot(distances,differenceList)
 plt.xlabel("mm")
 plt.ylabel("Difference between max and min sensor readings")
-plt.show()
+#plt.show()

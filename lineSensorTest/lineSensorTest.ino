@@ -36,6 +36,17 @@ LineSensor lineSensors(NB_LS_PINS, LS_FLEFT_IN_PIN, LS_LEFT_IN_PIN, LS_CENTRE_IN
 Kinematics_c kinematics;
 Motors_c motors(L_PWM_PIN, L_DIR_PIN, R_PWM_PIN, R_DIR_PIN);
 
+unsigned long leftCentreAmbient;
+unsigned long rightCentreAmbient;
+unsigned long centreAmbient;
+unsigned long leftCentreCurrent;
+unsigned long rightCentreCurrent;
+
+bool initialHeadingState = true;
+bool turnToShadowEdgeState = false;
+bool shadowFollowClockwiseState = false;
+bool shadowFollowAnticlockwiseState = false;
+
 void setup() {
   
   setupEncoder0();
@@ -44,9 +55,33 @@ void setup() {
   delay(1000);
   Serial.println("***RESET***");
 
-  motors.setMotorPower(20, 20);
+  float ambientLight[3];
+
+  lineSensors.getAmbient(ambientLight);
+  Serial.println(ambientLight[0]);
+
+  unsigned long leftAmbient = ambientLight[0];
+  unsigned long rightAmbient = ambientLight[1];
+  unsigned long centreAmbient = ambientLight[2];
+
+  leftCentreAmbient = leftAmbient + centreAmbient;
+  rightCentreAmbient = rightAmbient + centreAmbient;
+  Serial.println(leftCentreAmbient);
+  delay(2000);
+
+  motors.setMotorPower(15, 15);
 
 }
+
+float getLineError(unsigned long sensor_read[7]) {
+  float w_left = sensor_read[1] + 0.5*sensor_read[2];
+  float w_right = sensor_read[3] + 0.5*sensor_read[2];
+  float e_line = (w_right - w_left)/(w_right + w_left);
+  return e_line;
+}
+
+float turn_pwm;
+float gain = 7.5;
 
 void loop() {
   unsigned long current_ts;
@@ -62,7 +97,6 @@ void loop() {
 
   if(elapsed_t > KINEMATICS_UPDATE) {
     kinematics.update(-count_e1, -count_e0);
-
     
     float e1_speed;
     float e0_speed;
@@ -95,7 +129,50 @@ void loop() {
     Serial.print(sensor_read[6]);
     Serial.print(",");
     Serial.print(kinematics.x);
-    
+
+    leftCentreCurrent = sensor_read[1] + sensor_read[2];
+    rightCentreCurrent = sensor_read[3] + sensor_read[2];
+
+    if (initialHeadingState) {
+      if (leftCentreCurrent > leftCentreAmbient*3 || rightCentreCurrent > rightCentreAmbient*3) {
+        motors.setMotorPower(0,0);
+        Serial.println(leftCentreAmbient);
+        Serial.println(leftCentreCurrent);
+        centreAmbient = sensor_read[2];
+        delay(500);
+        if (leftCentreCurrent/leftCentreAmbient > rightCentreCurrent/rightCentreAmbient) {
+          motors.turnOnSpot(15,-5);
+          turnToShadowEdgeState = true;
+          initialHeadingState = false;
+        } else {
+          motors.turnOnSpot(-5,15);
+          turnToShadowEdgeState = true;
+          initialHeadingState = false;
+        }
+      }
+    }
+    if (turnToShadowEdgeState) {
+      if (sensor_read[2]*1.15 < centreAmbient) {
+        turnToShadowEdgeState = false;
+        if (sensor_read[1] > sensor_read[3]) {
+          shadowFollowAnticlockwiseState = true;
+        } else {
+          shadowFollowClockwiseState = true;
+        }
+      }
+    }
+
+    if (shadowFollowAnticlockwiseState) {
+      float e_line = getLineError(sensor_read);
+      turn_pwm = e_line*gain;
+      motors.setMotorPower( (15 + turn_pwm), (15 - turn_pwm));
+    }
+
+    if (shadowFollowClockwiseState) {
+      float e_line = getLineError(sensor_read);
+      turn_pwm = e_line*gain;
+      motors.setMotorPower( (15 + turn_pwm), (15 - turn_pwm));
+    }
 
     ls_ts = millis();
   }
