@@ -2,6 +2,7 @@
 # include "motor.h"
 # include "encoders.h"
 # include "kinematics.h"
+# include "pid.h"
 
 # define L_PWM_PIN 10
 # define L_DIR_PIN 16
@@ -29,15 +30,16 @@
 # define C_LS_THRESHOLD 1000
 # define R_LS_THRESHOLD 1200
 
+PID_c spd_pid_right;
+PID_c spd_pid_left;
+PID_c heading_pid;
+
 float ave_e1_spd;
 float ave_e0_spd;
 
 LineSensor lineSensors(NB_LS_PINS, LS_FLEFT_IN_PIN, LS_LEFT_IN_PIN, LS_CENTRE_IN_PIN, LS_RIGHT_IN_PIN, LS_FRIGHT_IN_PIN, EMIT);
 Kinematics_c kinematics;
 Motors_c motors(L_PWM_PIN, L_DIR_PIN, R_PWM_PIN, R_DIR_PIN);
-PID_c spd_pid_left;
-PID_c spd_pid_right
-PID_c heading_pid;
 
 unsigned long leftCentreAmbient;
 unsigned long rightCentreAmbient;
@@ -72,8 +74,9 @@ void setup() {
   Serial.println(leftCentreAmbient);
   delay(2000);
 
-  motors.setMotorPower(15, 15);
-
+  spd_pid_left.initialise(100, 0.15, 100);
+  spd_pid_right.initialise(100, 0.15, 100);
+  heading_pid.initialise(0.3, 0.000001, 1);
 }
 
 float getLineError(unsigned long sensor_read[7]) {
@@ -100,8 +103,6 @@ void loop() {
 
   if(elapsed_t > KINEMATICS_UPDATE) {
     kinematics.update(-count_e1, -count_e0);
-
-
     
     float e1_speed;
     float e0_speed;
@@ -116,8 +117,6 @@ void loop() {
     ave_e0_spd = (ave_e0_spd * 0.7) + (e0_speed*0.3);
     count_e0 = 0;
     count_e1 = 0;
-
-   
 
     unsigned long sensor_read[NB_LS_PINS];
     lineSensors.readLineSensor(sensor_read);
@@ -136,11 +135,19 @@ void loop() {
     Serial.print(sensor_read[6]);
     Serial.print(",");
     Serial.print(kinematics.x);
+    Serial.print("\n");
 
     leftCentreCurrent = sensor_read[1] + sensor_read[2];
     rightCentreCurrent = sensor_read[3] + sensor_read[2];
 
     if (initialHeadingState) {
+      float pwml;
+      float pwmr;
+      pwml = spd_pid_left.update(ave_e1_spd, 0.2, elapsed_t);
+      pwmr = spd_pid_right.update(ave_e0_spd, 0.2, elapsed_t);
+      Serial.println(pwml);
+      Serial.println(pwmr);
+      motors.setMotorPower(pwml,pwmr);
       if (leftCentreCurrent > leftCentreAmbient*2 || rightCentreCurrent > rightCentreAmbient*2) {
         motors.setMotorPower(0,0);
         Serial.println(leftCentreAmbient);
@@ -183,9 +190,6 @@ void loop() {
 
     ls_ts = millis();
   }
- 
- 
-  Serial.print("\n");
   
 
 }
