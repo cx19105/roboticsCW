@@ -35,6 +35,9 @@ float ave_e0_spd;
 LineSensor lineSensors(NB_LS_PINS, LS_FLEFT_IN_PIN, LS_LEFT_IN_PIN, LS_CENTRE_IN_PIN, LS_RIGHT_IN_PIN, LS_FRIGHT_IN_PIN, EMIT);
 Kinematics_c kinematics;
 Motors_c motors(L_PWM_PIN, L_DIR_PIN, R_PWM_PIN, R_DIR_PIN);
+PID_c spd_pid_left;
+PID_c spd_pid_right
+PID_c heading_pid;
 
 unsigned long leftCentreAmbient;
 unsigned long rightCentreAmbient;
@@ -97,6 +100,8 @@ void loop() {
 
   if(elapsed_t > KINEMATICS_UPDATE) {
     kinematics.update(-count_e1, -count_e0);
+
+
     
     float e1_speed;
     float e0_speed;
@@ -111,6 +116,8 @@ void loop() {
     ave_e0_spd = (ave_e0_spd * 0.7) + (e0_speed*0.3);
     count_e0 = 0;
     count_e1 = 0;
+
+   
 
     unsigned long sensor_read[NB_LS_PINS];
     lineSensors.readLineSensor(sensor_read);
@@ -134,6 +141,13 @@ void loop() {
     rightCentreCurrent = sensor_read[3] + sensor_read[2];
 
     if (initialHeadingState) {
+      float pwml
+      float pwmr
+
+      pwml = spd_pid_left.update(e1_speed, 0.3, elapsed_t);
+      pwmr = spd_pid_right.update(e0_speed, 0.3, elapsed_t);
+     
+      motors.setMotorPower(pwml, pwmr)
       if (leftCentreCurrent > leftCentreAmbient*3 || rightCentreCurrent > rightCentreAmbient*3) {
         motors.setMotorPower(0,0);
         Serial.println(leftCentreAmbient);
