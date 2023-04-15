@@ -134,25 +134,25 @@ void loop() {
     rightCentreCurrent = sensor_read[3] + sensor_read[2];
 
     if (initialHeadingState) {
-      if (leftCentreCurrent > leftCentreAmbient*3 || rightCentreCurrent > rightCentreAmbient*3) {
+      if (leftCentreCurrent > leftCentreAmbient*2 || rightCentreCurrent > rightCentreAmbient*2) {
         motors.setMotorPower(0,0);
         Serial.println(leftCentreAmbient);
         Serial.println(leftCentreCurrent);
         centreAmbient = sensor_read[2];
         delay(500);
         if (leftCentreCurrent/leftCentreAmbient > rightCentreCurrent/rightCentreAmbient) {
-          motors.turnOnSpot(15,-5);
+          motors.setMotorPower(20,0);
           turnToShadowEdgeState = true;
           initialHeadingState = false;
         } else {
-          motors.turnOnSpot(-5,15);
+          motors.setMotorPower(0,20);
           turnToShadowEdgeState = true;
           initialHeadingState = false;
         }
       }
     }
     if (turnToShadowEdgeState) {
-      if (sensor_read[2]*1.15 < centreAmbient) {
+      if (sensor_read[2]*1.5 < centreAmbient) {
         turnToShadowEdgeState = false;
         if (sensor_read[1] > sensor_read[3]) {
           shadowFollowAnticlockwiseState = true;
