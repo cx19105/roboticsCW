@@ -2,6 +2,7 @@
 # include "motor.h"
 # include "encoders.h"
 # include "kinematics.h"
+# include "pid.h"
 
 # define L_PWM_PIN 10
 # define L_DIR_PIN 16
@@ -29,26 +30,34 @@
 # define C_LS_THRESHOLD 1000
 # define R_LS_THRESHOLD 1200
 
+PID_c spd_pid_right;
+PID_c spd_pid_left;
+PID_c heading_pid;
+
 float ave_e1_spd;
 float ave_e0_spd;
 
 LineSensor lineSensors(NB_LS_PINS, LS_FLEFT_IN_PIN, LS_LEFT_IN_PIN, LS_CENTRE_IN_PIN, LS_RIGHT_IN_PIN, LS_FRIGHT_IN_PIN, EMIT);
 Kinematics_c kinematics;
 Motors_c motors(L_PWM_PIN, L_DIR_PIN, R_PWM_PIN, R_DIR_PIN);
-PID_c spd_pid_left;
-PID_c spd_pid_right
-PID_c heading_pid;
 
 unsigned long leftCentreAmbient;
 unsigned long rightCentreAmbient;
-unsigned long centreAmbient;
 unsigned long leftCentreCurrent;
 unsigned long rightCentreCurrent;
 
 bool initialHeadingState = true;
-bool turnToShadowEdgeState = false;
-bool shadowFollowClockwiseState = false;
-bool shadowFollowAnticlockwiseState = false;
+bool findAngleState = false;
+bool turnByAngleState = false;
+bool shadowFollowState = false;
+bool shortestPathClockwise = true;
+
+float startingDistance = 200; //mm
+float sensorWidth = 20; //mm
+float xOne;
+float x;
+float theta;
+float y;
 
 void setup() {
   
@@ -72,8 +81,11 @@ void setup() {
   Serial.println(leftCentreAmbient);
   delay(2000);
 
-  motors.setMotorPower(15, 15);
+  motors.setMotorPower(15,15);
 
+  spd_pid_left.initialise(100, 0.15, 100);
+  spd_pid_right.initialise(100, 0.15, 100);
+  heading_pid.initialise(0.3, 0.000001, 1);
 }
 
 float getLineError(unsigned long sensor_read[7]) {
@@ -100,8 +112,6 @@ void loop() {
 
   if(elapsed_t > KINEMATICS_UPDATE) {
     kinematics.update(-count_e1, -count_e0);
-
-
     
     float e1_speed;
     float e0_speed;
@@ -117,10 +127,9 @@ void loop() {
     count_e0 = 0;
     count_e1 = 0;
 
-   
-
     unsigned long sensor_read[NB_LS_PINS];
     lineSensors.readLineSensor(sensor_read);
+    
     Serial.print(sensor_read[0]);
     Serial.print(",");
     Serial.print(sensor_read[1]);
@@ -136,56 +145,94 @@ void loop() {
     Serial.print(sensor_read[6]);
     Serial.print(",");
     Serial.print(kinematics.x);
-
+    Serial.print("\n");
+    
     leftCentreCurrent = sensor_read[1] + sensor_read[2];
     rightCentreCurrent = sensor_read[3] + sensor_read[2];
 
     if (initialHeadingState) {
-      if (leftCentreCurrent > leftCentreAmbient*2 || rightCentreCurrent > rightCentreAmbient*2) {
+      float pwml;
+      float pwmr;
+      pwml = spd_pid_left.update(ave_e1_spd, 15, elapsed_t);
+      pwmr = spd_pid_right.update(ave_e0_spd, 15, elapsed_t);
+      motors.setMotorPower(15,15);
+      if (leftCentreCurrent > leftCentreAmbient*2) {
         motors.setMotorPower(0,0);
-        Serial.println(leftCentreAmbient);
-        Serial.println(leftCentreCurrent);
-        centreAmbient = sensor_read[2];
         delay(500);
-        if (leftCentreCurrent/leftCentreAmbient > rightCentreCurrent/rightCentreAmbient) {
-          motors.setMotorPower(20,0);
-          turnToShadowEdgeState = true;
-          initialHeadingState = false;
-        } else {
-          motors.setMotorPower(0,20);
-          turnToShadowEdgeState = true;
-          initialHeadingState = false;
-        }
+        xOne = kinematics.x;
+        shortestPathClockwise = false;
+        findAngleState = true;
+        initialHeadingState = false;
+        motors.setMotorPower(15,15);
+      } else if (rightCentreCurrent > rightCentreAmbient*2) {
+        motors.setMotorPower(0,0);
+        delay(500);
+        xOne = kinematics.x;
+        shortestPathClockwise = true;
+        findAngleState = true;
+        initialHeadingState = false;
+        motors.setMotorPower(15,15);
       }
     }
-    if (turnToShadowEdgeState) {
-      if (sensor_read[2]*1.5 < centreAmbient) {
-        turnToShadowEdgeState = false;
-        if (sensor_read[1] > sensor_read[3]) {
-          shadowFollowAnticlockwiseState = true;
-        } else {
-          shadowFollowClockwiseState = true;
-        }
+    
+    if (findAngleState && shortestPathClockwise) {
+      if (leftCentreCurrent > leftCentreAmbient*2) {
+        motors.setMotorPower(0,0);
+        delay(500);
+        x = kinematics.x - xOne;
+        theta = atan(sensorWidth/x); // + or - for clockwise??
+        findAngleState = false;
+        turnByAngleState = true;
+      }
+    }
+    if (findAngleState && !shortestPathClockwise) {
+      if (rightCentreCurrent > rightCentreAmbient*2) {
+        motors.setMotorPower(0,0);
+        delay(500);
+        x = kinematics.x - xOne;
+        theta = -atan(sensorWidth/x);
+        findAngleState = false;
+        turnByAngleState = true;
+      }
+    }
+    
+    if (turnByAngleState) {
+      // Code needed from PID when ready
+      
+      // on completion...
+      if (kinematics.x < startingDistance) {
+        shadowFollowState = true;
+        turnByAngleState = false;
+        y = kinematics.y;
+      }
+      else {
+        // Move briefly forward to finish
+        motors.setMotorPower(15,15);
+        delay(1000);
       }
     }
 
-    if (shadowFollowAnticlockwiseState) {
+    if (shadowFollowState && shortestPathClockwise) {
       float e_line = getLineError(sensor_read);
       turn_pwm = e_line*gain;
       motors.setMotorPower( (15 + turn_pwm), (15 - turn_pwm));
+      if (kinematics.y > y) {
+        shadowFollowState = false;
+        turnByAngleState = true;
+      }
     }
-
-    if (shadowFollowClockwiseState) {
+    if (shadowFollowState && !shortestPathClockwise) {
       float e_line = getLineError(sensor_read);
       turn_pwm = e_line*gain;
       motors.setMotorPower( (15 + turn_pwm), (15 - turn_pwm));
+      if (kinematics.y < y) {
+        shadowFollowState = false;
+        turnByAngleState = true;
+      }
     }
 
     ls_ts = millis();
   }
- 
- 
-  Serial.print("\n");
   
 
 }
