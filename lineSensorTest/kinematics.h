@@ -23,7 +23,7 @@ class Kinematics_c {
       this->theta = 0.0;
       this->r = 16.0;
       this->l = 44.5;
-      this->angleRes = (103/358.0); //mm
+      this->angleRes = (68.0/201.0); //mm
       this->ltheta_dot = 0;
       this->rtheta_dot = 0;
 
@@ -51,11 +51,11 @@ class Kinematics_c {
       x = x + xr*cos(theta);
       y = y + xr*sin(theta);
       theta = theta + theta_r_dot;
-      if (theta > (2*3.14159)){
+      /*if (theta > (2*3.14159)){
         theta = theta - 2*3.14159;
       } else if (theta < -(2*3.14159)) {
         theta = theta + 2*3.14159;
-      }
+      }*/
       
     }
     
