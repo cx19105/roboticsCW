@@ -3,6 +3,9 @@
 # include "kinematics.h"
 # include "pid.h"
 # include "lineSensor.h"
+# include <USBCore.h>    // To fix serial print behaviour bug.
+u8 USB_SendSpace(u8 ep);
+# define SERIAL_ACTIVE (USB_SendSpace(CDC_TX) >= 50)
 
 # define LS_LEFT_IN_PIN A0
 # define LS_CENTRE_IN_PIN A2
@@ -23,6 +26,7 @@
 # define LINE_SENSOR_UPDATE 100
 # define MOTOR_UPDATE 2000
 # define KINEMATICS_UPDATE 20
+# define READINGS_UPDATE 50
 
 # define L_LS_THRESHOLD 1400
 # define C_LS_THRESHOLD 1000
@@ -76,6 +80,11 @@ float pwml;
 float pwmr;
 float pwmh;
 
+float results[5][100];
+unsigned long readings_ts;
+unsigned long finishTime;
+int j;
+
 void setup() {
   setupEncoder0();
   setupEncoder1();
@@ -109,7 +118,7 @@ void setup() {
   rightCentreAmbient = rightAmbient;
   
   //spd_pid_left.reset()
-
+  readings_ts = millis();
 }
 
 float getLineError(unsigned long sensor_read[7]) {
@@ -122,9 +131,49 @@ float getLineError(unsigned long sensor_read[7]) {
 float turn_pwm;
 float gain = 30;
 
+void reportResultsOverSerial() {
+
+  // Print millis for debug so we can 
+  // validate this is working in real
+  // time, and not glitched somehow
+  if( SERIAL_ACTIVE ) Serial.print(millis());
+  if( SERIAL_ACTIVE ) Serial.print(", ");
+  if( SERIAL_ACTIVE ) Serial.println( finishTime );
+  delay(1);
+
+
+  // Loop through array to print all 
+  // results collected
+  int i,j;  
+  for( j = 0; j < 100; j++ ) {   // row
+
+    // Comma seperated values, to 2 decimal places
+    if( SERIAL_ACTIVE ) Serial.print( results[0][j], 0 );
+    delay(1);
+    if( SERIAL_ACTIVE ) Serial.print( "," );
+    if( SERIAL_ACTIVE ) Serial.print( results[1][j], 0 );
+    delay(1);
+    if( SERIAL_ACTIVE ) Serial.print( "," );
+    if( SERIAL_ACTIVE ) Serial.print( results[2][j], 0 );
+    delay(1);
+    if( SERIAL_ACTIVE ) Serial.print( "," );
+    if( SERIAL_ACTIVE ) Serial.print( results[3][j], 2 );
+    delay(1);
+    if( SERIAL_ACTIVE ) Serial.print( "," );
+    if( SERIAL_ACTIVE ) Serial.print( results[4][j], 2 );
+    delay(1);
+    if( SERIAL_ACTIVE ) Serial.print( "\n" ); // new row
+  }
+
+  Serial.println(demandTheta);
+  if( SERIAL_ACTIVE ) Serial.println( "---End of Results ---\n\n" ); 
+
+}
+
 void loop() {
 
   unsigned long elapsed_t;
+  unsigned long sensor_read[NB_LS_PINS];
   
   elapsed_t = millis() - update_ts;
   
@@ -147,7 +196,6 @@ void loop() {
     ave_e1_spd = (ave_e1_spd * 0.7) + (e1_speed*0.3);
     ave_e0_spd = (ave_e0_spd * 0.7) + (e0_speed*0.3);
 
-    unsigned long sensor_read[NB_LS_PINS];
     lineSensors.readLineSensor(sensor_read);
     
     //leftCentreCurrent = sensor_read[1] + sensor_read[2];
@@ -228,6 +276,19 @@ void loop() {
           motors.setMotorPower(pwml, pwmr, 0);
           delay(250);
           motors.setMotorPower(0,0,0);
+          for( j;j < 100;j++) {
+            results[0][j] = sensor_read[0];
+            results[1][j] = sensor_read[1];
+            results[2][j] = sensor_read[2];
+            results[3][j] = kinematics.x;
+            results[4][j] = kinematics.y;
+          }
+          delay(10000);
+          reportResultsOverSerial();
+
+          // Delay, we don't need to do this
+          // excessively fast.
+          delay(100000);
         }
       }
     }
@@ -259,6 +320,19 @@ void loop() {
     count_e1 = 0;
 
   }
+
+  if (millis() - readings_ts > READINGS_UPDATE && j < 100) {
+      results[0][j] = sensor_read[0];
+      results[1][j] = sensor_read[1];
+      results[2][j] = sensor_read[2];
+      results[3][j] = kinematics.x;
+      results[4][j] = kinematics.y;
+      j++;
+      if (j == 100) {
+        finishTime = millis();
+      }
+      readings_ts = millis();
+    }
   
   
   
