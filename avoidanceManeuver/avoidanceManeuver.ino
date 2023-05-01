@@ -274,7 +274,7 @@ void loop() {
         else {
           // Move briefly forward to finish
           motors.setMotorPower(pwml, pwmr, 0);
-          delay(250);
+          delay(650);
           motors.setMotorPower(0,0,0);
           for( j;j < 100;j++) {
             results[0][j] = sensor_read[0];
